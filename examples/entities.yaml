@@ -19,6 +19,52 @@ spec:
   system: examples
   providesApis: [example-grpc-api]
 ---
+# Kubernetes-enabled component example
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: my-k8s-app
+  annotations:
+    backstage.io/kubernetes-id: my-k8s-app
+    backstage.io/kubernetes-namespace: default
+    backstage.io/kubernetes-label-selector: 'app=my-k8s-app'
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+---
+# Backstage Pod component
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-pod-component
+  annotations:
+    backstage.io/kubernetes-id: backstage-pod
+    backstage.io/kubernetes-namespace: default
+    backstage.io/kubernetes-label-selector: 'run=backstage-pod'
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+---
+# Cluster-wide resource viewer - shows ALL resources in default namespace
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: local-cluster-viewer
+  title: "Local Kubernetes Cluster"
+  description: "View all resources in your local minikube cluster"
+  annotations:
+    backstage.io/kubernetes-id: cluster-viewer
+    backstage.io/kubernetes-namespace: default
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+---
 # https://backstage.io/docs/features/software-catalog/descriptor-format#kind-api
 apiVersion: backstage.io/v1alpha1
 kind: API

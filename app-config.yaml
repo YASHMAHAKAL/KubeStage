@@ -105,7 +105,14 @@ catalog:
     #     - allow: [User, Group]
 
 kubernetes:
-  # see https://backstage.io/docs/features/kubernetes/configuration for kubernetes configuration options
+  serviceLocatorMethod:
+    type: 'multiTenant'
+  clusterLocatorMethods:
+    - type: 'config'
+      clusters:
+        - name: 'local-cluster'
+          url: 'http://localhost:8001'
+          authProvider: 'localKubectlProxy'
 
 # see https://backstage.io/docs/permissions/getting-started for more on the permission framework
 permission:
