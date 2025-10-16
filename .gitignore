@@ -42,9 +42,13 @@ site
 
 # Local configuration files
 *.local.yaml
+app-config.local.yaml
 
 # Sensitive credentials
 *-credentials.yaml
+
+# Backstage sensitive files
+.backstage/
 
 # vscode database functionality support files
 *.session.sql
