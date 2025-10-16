@@ -78,19 +78,19 @@ catalog:
   rules:
     - allow: [Component, System, API, Resource, Location]
   locations:
-    # Local example data, file locations are relative to the backend process, typically `packages/backend`
+    # Local example data, file locations are relative to the backend process, typically project root
     - type: file
-      target: ../../examples/entities.yaml
+      target: /home/yash/kubestage/examples/entities.yaml
 
     # Local example template
     - type: file
-      target: ../../examples/template/template.yaml
+      target: /home/yash/kubestage/examples/template/template.yaml
       rules:
         - allow: [Template]
 
     # Local example organizational data
     - type: file
-      target: ../../examples/org.yaml
+      target: /home/yash/kubestage/examples/org.yaml
       rules:
         - allow: [User, Group]
 
@@ -110,10 +110,11 @@ kubernetes:
   clusterLocatorMethods:
     - type: 'config'
       clusters:
-        - name: 'local-proxy'
-          url: 'http://localhost:8001'
-          authProvider: 'localKubectlProxy'
-          skipTLSVerify: true
+        - name: 'minikube'
+          url: 'https://192.168.49.2:8443'
+          authProvider: 'serviceAccount'
+          serviceAccountToken: ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}
+          caFile: '/home/yash/kubestage/.backstage/minikube-ca.crt'
           skipMetricsLookup: true
 
 # see https://backstage.io/docs/permissions/getting-started for more on the permission framework
