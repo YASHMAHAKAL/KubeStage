@@ -59,6 +59,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: cluster-viewer
     backstage.io/kubernetes-namespace: default
+    backstage.io/kubernetes-label-selector: "backstage.io/kubernetes-id=cluster-viewer"
 spec:
   type: service
   lifecycle: experimental
