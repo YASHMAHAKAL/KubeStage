@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${{ values.name }}
+  namespace: ${{ values.namespace }}
+  labels:
+    backstage.io/kubernetes-id: cluster-viewer
+    app: ${{ values.labels.app }}
+    version: ${{ values.labels.version }}
+    environment: ${{ values.labels.environment }}
+  annotations:
+    backstage.io/kubernetes-id: cluster-viewer
+    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+spec:
+  containers:
+  - name: ${{ values.name }}
+    image: ${{ values.image }}
+    ports:
+    - containerPort: ${{ values.port }}
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  restartPolicy: Always

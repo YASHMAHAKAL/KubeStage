@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.name }} Kubernetes Pod
+  annotations:
+    backstage.io/kubernetes-id: cluster-viewer
+    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+    backstage.io/kubernetes-label-selector: 'app=${{ values.labels.app }}'
+spec:
+  type: service
+  lifecycle: experimental
+  owner: platform-team
