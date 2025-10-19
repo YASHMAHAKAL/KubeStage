@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   Dialog,
@@ -49,6 +49,8 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [availableResources, setAvailableResources] = useState<Array<{name: string, type: string}>>([]);
+  const [loadingResources, setLoadingResources] = useState(false);
 
   // Form state for different actions
   const [formData, setFormData] = useState({
@@ -75,6 +77,13 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
     setError(null);
   };
 
+  // Fetch available resources when delete dialog opens
+  useEffect(() => {
+    if (openDialog === 'delete' && formData.resourceType && namespace) {
+      fetchAvailableResources(formData.resourceType);
+    }
+  }, [openDialog, formData.resourceType, namespace]);
+
   const callKubernetesApi = async (payload: any) => {
     // Use the backend URL directly since it runs on port 7007
     const backendUrl = window.location.protocol === 'https:' ? 
@@ -90,6 +99,35 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
       body: JSON.stringify(payload),
     });
     return response;
+  };
+
+  const fetchAvailableResources = async (resourceType: string) => {
+    try {
+      setLoadingResources(true);
+      const backendUrl = window.location.protocol === 'https:' ? 
+        window.location.origin.replace('3000', '7007') : 
+        'http://localhost:7007';
+      
+      const response = await fetch(`${backendUrl}/api/kubernetes-actions/resources/${resourceType}?namespace=${namespace}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch resources: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAvailableResources(data.resources || []);
+    } catch (err) {
+      console.error('Failed to fetch resources:', err);
+      setAvailableResources([]);
+    } finally {
+      setLoadingResources(false);
+    }
   };
 
   const handleCreateDeployment = async () => {
@@ -336,6 +374,46 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
     </Dialog>
   );
 
+  const renderCreatePodDialog = () => (
+    <Dialog open={openDialog === 'create-pod'} onClose={handleCloseDialog} maxWidth="md">
+      <DialogTitle>Create Pod</DialogTitle>
+      <DialogContent>
+        <Box display="flex" flexDirection="column" mt={1}>
+          <TextField
+            label="Pod Name"
+            value={formData.resourceName}
+            onChange={(e) => setFormData({ ...formData, resourceName: e.target.value })}
+            fullWidth
+            className={classes.formField}
+          />
+          <TextField
+            label="Container Image"
+            value={formData.image}
+            onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+            fullWidth
+            placeholder="nginx:latest"
+          />
+          <TextField
+            label="Container Port"
+            type="number"
+            value={formData.port}
+            onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
+            fullWidth
+          />
+          {loading && <CircularProgress />}
+          {result && <Alert severity="success">{result}</Alert>}
+          {error && <Alert severity="error">{error}</Alert>}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseDialog}>Cancel</Button>
+        <Button onClick={executeAction} disabled={loading} color="primary" variant="contained">
+          Create Pod
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   const renderDeleteDialog = () => (
     <Dialog open={openDialog === 'delete'} onClose={handleCloseDialog} maxWidth="sm">
       <DialogTitle>Delete Resource</DialogTitle>
@@ -345,7 +423,16 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
             <InputLabel>Resource Type</InputLabel>
             <Select
               value={formData.resourceType}
-              onChange={(e) => setFormData({ ...formData, resourceType: e.target.value as string })}
+              onChange={(e) => {
+                const newResourceType = e.target.value as string;
+                setFormData({ ...formData, resourceType: newResourceType, resourceName: '' });
+                // Reset available resources when type changes
+                setAvailableResources([]);
+                // Fetch new resources for the selected type
+                if (namespace) {
+                  fetchAvailableResources(newResourceType);
+                }
+              }}
             >
               <MenuItem value="deployment">Deployment</MenuItem>
               <MenuItem value="service">Service</MenuItem>
@@ -354,12 +441,29 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
               <MenuItem value="secret">Secret</MenuItem>
             </Select>
           </FormControl>
-          <TextField
-            label="Resource Name"
-            value={formData.resourceName}
-            onChange={(e) => setFormData({ ...formData, resourceName: e.target.value })}
-            fullWidth
-          />
+          <FormControl fullWidth style={{ marginTop: 16 }}>
+            <InputLabel>Resource Name</InputLabel>
+            <Select
+              value={formData.resourceName}
+              onChange={(e) => setFormData({ ...formData, resourceName: e.target.value as string })}
+              disabled={loadingResources}
+            >
+              {loadingResources ? (
+                <MenuItem disabled>
+                  <CircularProgress size={20} style={{ marginRight: 8 }} />
+                  Loading resources...
+                </MenuItem>
+              ) : availableResources.length === 0 ? (
+                <MenuItem disabled>No resources found</MenuItem>
+              ) : (
+                availableResources.map((resource) => (
+                  <MenuItem key={resource.name} value={resource.name}>
+                    {resource.name}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
           <Typography variant="body2" color="textSecondary">
             Warning: This action cannot be undone.
           </Typography>
@@ -417,6 +521,7 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
 
       {renderCreateDeploymentDialog()}
       {renderCreateServiceDialog()}
+  {renderCreatePodDialog()}
       {renderDeleteDialog()}
     </Box>
   );

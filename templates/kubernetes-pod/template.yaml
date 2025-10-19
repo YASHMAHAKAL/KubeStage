@@ -1,0 +1,109 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: kubernetes-pod
+  title: Deploy Kubernetes Pod
+  description: Create and deploy a standalone Kubernetes pod
+  tags:
+    - kubernetes
+    - pod
+    - deployment
+spec:
+  owner: platform-team
+  type: service
+  parameters:
+    - title: Pod Configuration
+      required:
+        - name
+        - image
+      properties:
+        name:
+          title: Pod Name
+          type: string
+          description: Name of the pod to create
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          ui:autofocus: true
+          ui:help: 'Must be lowercase alphanumeric with hyphens'
+        image:
+          title: Container Image
+          type: string
+          description: Docker image to use for the pod
+          default: 'nginx:latest'
+          examples:
+            - 'nginx:latest'
+            - 'redis:alpine'
+            - 'postgres:13'
+        port:
+          title: Container Port
+          type: integer
+          description: Port the container listens on
+          default: 80
+          minimum: 1
+          maximum: 65535
+        namespace:
+          title: Namespace
+          type: string
+          description: Kubernetes namespace to deploy the pod
+          default: 'default'
+          enum:
+            - 'default'
+            - 'kube-system'
+            - 'development'
+            - 'staging'
+            - 'production'
+        labels:
+          title: Additional Labels
+          type: object
+          description: Additional labels to apply to the pod
+          properties:
+            app:
+              title: App Label
+              type: string
+              default: '${{ parameters.name }}'
+            version:
+              title: Version Label
+              type: string
+              default: 'v1.0.0'
+            environment:
+              title: Environment Label
+              type: string
+              default: 'development'
+              enum:
+                - 'development'
+                - 'staging'
+                - 'production'
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          name: ${{ parameters.name }}
+          image: ${{ parameters.image }}
+          port: ${{ parameters.port }}
+          namespace: ${{ parameters.namespace }}
+          labels: ${{ parameters.labels }}
+
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This is ${{ parameters.name }}
+        repoUrl: ${{ parameters.repoUrl }}
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

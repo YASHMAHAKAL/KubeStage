@@ -190,8 +190,47 @@ export async function createKubernetesActionRouter(
     }
   });
 
-  // GET /health - Health check
-  router.get('/health', (_req, res) => {
+  // GET /resources/:type - List available resources of a specific type
+  router.get('/resources/:type', async (req, res) => {
+    try {
+      const { type } = req.params;
+      const { namespace = 'default' } = req.query;
+      
+      logger.info(`Listing Kubernetes resources: ${type} in namespace ${namespace}`);
+
+      const result = await executeKubectl([
+        'get', type,
+        '--namespace', namespace as string,
+        '--output', 'name'
+      ]);
+
+      const resources = result.stdout
+        .split('\n')
+        .filter(name => name.trim() !== '')
+        .map(name => {
+          // Extract just the resource name from format like "deployment.apps/my-app"
+          const parts = name.trim().split('/');
+          const resourceName = parts.length > 1 ? parts[1] : parts[0];
+          return { name: resourceName, type };
+        });
+
+      res.json({
+        success: true,
+        resources,
+        namespace
+      });
+    } catch (error: any) {
+      logger.error(`Failed to list resources: ${error.message}`);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        type: req.params.type
+      });
+    }
+  });
+
+  // GET /health - Health check endpoint  
+  router.get('/health', (_, res) => {
     res.json({ status: 'ok', service: 'kubernetes-actions' });
   });
 
