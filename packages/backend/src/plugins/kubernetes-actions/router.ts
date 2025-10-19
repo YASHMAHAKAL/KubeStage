@@ -154,9 +154,26 @@ export async function createKubernetesActionRouter(
           break;
 
         case 'delete-resource':
-          const { resourceType, resourceName, deleteNamespace = 'default' } = parameters;
+          const { resourceType, resourceName, resourceNames, deleteNamespace = 'default' } = parameters;
+          
+          // Support both single resource (resourceName) and multiple resources (resourceNames)
+          const resourcesToDelete = resourceNames && Array.isArray(resourceNames) ? resourceNames : [resourceName];
+          
+          // Filter out empty values
+          const validResources = resourcesToDelete.filter(name => name && name.trim() !== '');
+          
+          if (validResources.length === 0) {
+            return res.status(400).json({ 
+              success: false, 
+              error: 'No valid resource names provided',
+              action: action,
+              parameters: parameters
+            });
+          }
+
           kubectlArgs = [
-            'delete', resourceType, resourceName,
+            'delete', resourceType,
+            ...validResources,
             `--namespace=${deleteNamespace}`
           ];
           break;

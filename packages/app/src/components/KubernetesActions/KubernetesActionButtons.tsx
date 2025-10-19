@@ -13,6 +13,7 @@ import {
   Box,
   Typography,
   CircularProgress,
+  Chip,
   makeStyles,
 } from '@material-ui/core';
 import { Alert } from '@material-ui/lab';
@@ -57,6 +58,7 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
     action: '',
     resourceType: 'deployment',
     resourceName: entityName,
+    resourceNames: [] as string[], // For multi-select deletion
     image: 'nginx:latest',
     replicas: 1,
     port: 80,
@@ -228,11 +230,18 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
       setLoading(true);
       setError('');
       
+      // Use resourceNames if multiple selected, otherwise use single resourceName
+      const resourcesToDelete = formData.resourceNames.length > 0 ? formData.resourceNames : [formData.resourceName];
+      
+      if (resourcesToDelete.length === 0 || resourcesToDelete.every(name => !name || name.trim() === '')) {
+        throw new Error('Please select at least one resource to delete');
+      }
+      
       const response = await callKubernetesApi({
         action: 'delete-resource',
         parameters: {
           resourceType: formData.resourceType,
-          resourceName: formData.resourceName,
+          resourceNames: resourcesToDelete,
           deleteNamespace: namespace,
         },
       });
@@ -242,7 +251,9 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
       }
 
       const data = await response.json();
-      setResult(data.output || 'Resource deleted successfully');
+      const resourceCount = resourcesToDelete.length;
+      const resourceText = resourceCount === 1 ? 'Resource' : `${resourceCount} resources`;
+      setResult(data.output || `${resourceText} deleted successfully`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
@@ -425,7 +436,7 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
               value={formData.resourceType}
               onChange={(e) => {
                 const newResourceType = e.target.value as string;
-                setFormData({ ...formData, resourceType: newResourceType, resourceName: '' });
+                setFormData({ ...formData, resourceType: newResourceType, resourceName: '', resourceNames: [] });
                 // Reset available resources when type changes
                 setAvailableResources([]);
                 // Fetch new resources for the selected type
@@ -442,11 +453,25 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
             </Select>
           </FormControl>
           <FormControl fullWidth style={{ marginTop: 16 }}>
-            <InputLabel>Resource Name</InputLabel>
+            <InputLabel>Resource Names (Select Multiple)</InputLabel>
             <Select
-              value={formData.resourceName}
-              onChange={(e) => setFormData({ ...formData, resourceName: e.target.value as string })}
+              multiple
+              value={formData.resourceNames}
+              onChange={(e) => setFormData({ ...formData, resourceNames: e.target.value as string[] })}
               disabled={loadingResources}
+              renderValue={(selected) => {
+                const selectedArray = selected as string[];
+                if (selectedArray.length === 0) {
+                  return 'No resources selected';
+                }
+                return (
+                  <Box display="flex" flexWrap="wrap" style={{ gap: '4px' }}>
+                    {selectedArray.map((value) => (
+                      <Chip key={value} label={value} size="small" />
+                    ))}
+                  </Box>
+                );
+              }}
             >
               {loadingResources ? (
                 <MenuItem disabled>
@@ -464,8 +489,11 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
               )}
             </Select>
           </FormControl>
-          <Typography variant="body2" color="textSecondary">
-            Warning: This action cannot be undone.
+          <Typography variant="body2" color="textSecondary" style={{ marginTop: 16 }}>
+            Warning: This action cannot be undone. 
+            {formData.resourceNames.length > 0 && (
+              <strong> {formData.resourceNames.length} resource{formData.resourceNames.length > 1 ? 's' : ''} will be deleted.</strong>
+            )}
           </Typography>
           {loading && <CircularProgress />}
           {result && <Alert severity="success">{result}</Alert>}
@@ -474,8 +502,12 @@ export const KubernetesActionButtons: React.FC<KubernetesActionButtonsProps> = (
       </DialogContent>
       <DialogActions>
         <Button onClick={handleCloseDialog}>Cancel</Button>
-        <Button onClick={executeAction} disabled={loading} color="secondary" variant="contained">
-          Delete
+        <Button onClick={executeAction} disabled={loading || formData.resourceNames.length === 0} color="secondary" variant="contained">
+          {formData.resourceNames.length === 0 
+            ? 'Select Resources' 
+            : formData.resourceNames.length === 1 
+              ? 'Delete Resource' 
+              : `Delete ${formData.resourceNames.length} Resources`}
         </Button>
       </DialogActions>
     </Dialog>
