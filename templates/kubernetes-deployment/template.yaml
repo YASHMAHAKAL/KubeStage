@@ -1,0 +1,201 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: kubernetes-deployment-template
+  title: Kubernetes Deployment Template
+  description: Create a standard Kubernetes deployment with configurable parameters
+  tags:
+    - kubernetes
+    - deployment
+    - golden-path
+spec:
+  owner: user:guest
+  type: service
+
+  parameters:
+    - title: Basic Information
+      required:
+        - name
+        - namespace
+      properties:
+        name:
+          title: Application Name
+          type: string
+          description: Name of your application (will be used for deployment and labels)
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          ui:autofocus: true
+          ui:help: 'Must be lowercase alphanumeric with hyphens'
+        namespace:
+          title: Kubernetes Namespace
+          type: string
+          description: Target namespace for the deployment
+          default: default
+          enum:
+            - default
+            - production
+            - staging
+            - development
+
+    - title: Container Configuration
+      required:
+        - image
+        - containerPort
+      properties:
+        image:
+          title: Container Image
+          type: string
+          description: Docker image to deploy
+          default: nginx:latest
+          examples:
+            - nginx:latest
+            - alpine:latest
+            - redis:7
+        containerPort:
+          title: Container Port
+          type: integer
+          description: Port that the container exposes
+          default: 80
+          minimum: 1
+          maximum: 65535
+
+    - title: Deployment Settings
+      required:
+        - replicas
+      properties:
+        replicas:
+          title: Number of Replicas
+          type: integer
+          description: Number of pod replicas to run
+          default: 2
+          minimum: 1
+          maximum: 10
+        cpuRequest:
+          title: CPU Request
+          type: string
+          description: CPU resource request
+          default: 100m
+          examples:
+            - 100m
+            - 250m
+            - 500m
+        memoryRequest:
+          title: Memory Request
+          type: string
+          description: Memory resource request
+          default: 128Mi
+          examples:
+            - 64Mi
+            - 128Mi
+            - 256Mi
+            - 512Mi
+        cpuLimit:
+          title: CPU Limit
+          type: string
+          description: CPU resource limit
+          default: 500m
+          examples:
+            - 250m
+            - 500m
+            - 1
+        memoryLimit:
+          title: Memory Limit
+          type: string
+          description: Memory resource limit
+          default: 256Mi
+          examples:
+            - 128Mi
+            - 256Mi
+            - 512Mi
+            - 1Gi
+
+    - title: Labels and Annotations
+      properties:
+        environment:
+          title: Environment
+          type: string
+          description: Environment label for the deployment
+          default: development
+          enum:
+            - development
+            - staging
+            - production
+        version:
+          title: Version
+          type: string
+          description: Version label for the deployment
+          default: 1.0.0
+        backstageId:
+          title: Backstage Kubernetes ID
+          type: string
+          description: ID for Backstage to track this deployment
+          default: cluster-viewer
+
+    - title: Repository Location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+    # Fetch the template content
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          name: ${{ parameters.name }}
+          namespace: ${{ parameters.namespace }}
+          image: ${{ parameters.image }}
+          containerPort: ${{ parameters.containerPort }}
+          replicas: ${{ parameters.replicas }}
+          cpuRequest: ${{ parameters.cpuRequest }}
+          memoryRequest: ${{ parameters.memoryRequest }}
+          cpuLimit: ${{ parameters.cpuLimit }}
+          memoryLimit: ${{ parameters.memoryLimit }}
+          environment: ${{ parameters.environment }}
+          version: ${{ parameters.version }}
+          backstageId: ${{ parameters.backstageId }}
+
+    # Publish to GitHub
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: Kubernetes deployment for ${{ parameters.name }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        gitCommitMessage: 'Initial commit: Add ${{ parameters.name }} deployment'
+
+    # Register in catalog
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    # Apply Kubernetes resources (if cluster access is available)
+    - id: apply-k8s
+      name: Apply Kubernetes Resources
+      action: kubernetes:apply
+      input:
+        manifestPath: k8s/deployment.yaml
+        clusterName: minikube
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
+      - title: View Deployment
+        icon: dashboard
+        url: ${{ steps['publish'].output.remoteUrl }}/blob/main/k8s/deployment.yaml

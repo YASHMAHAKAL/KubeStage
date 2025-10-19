@@ -76,7 +76,7 @@ catalog:
     entityFilename: catalog-info.yaml
     pullRequestBranchName: backstage-integration
   rules:
-    - allow: [Component, System, API, Resource, Location]
+    - allow: [Component, System, API, Resource, Location, Template]
   locations:
     # Local example data, file locations are relative to the backend process, typically project root
     - type: file
@@ -85,6 +85,16 @@ catalog:
     # Local example template
     - type: file
       target: /home/yash/kubestage/examples/template/template.yaml
+      rules:
+        - allow: [Template]
+
+    # Kubernetes templates
+    - type: file
+      target: /home/yash/kubestage/templates/kubernetes-deployment/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /home/yash/kubestage/templates/kubernetes-service/template.yaml
       rules:
         - allow: [Template]
 
