@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${{ values.name }}
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.name }}
+    environment: ${{ values.environment }}
+    version: ${{ values.version }}
+    backstage.io/kubernetes-id: ${{ values.backstageId }}
+  annotations:
+    backstage.io/created-by: template
+    backstage.io/template: kubernetes-deployment-template
+spec:
+  replicas: ${{ values.replicas }}
+  selector:
+    matchLabels:
+      app: ${{ values.name }}
+  template:
+    metadata:
+      labels:
+        app: ${{ values.name }}
+        environment: ${{ values.environment }}
+        version: ${{ values.version }}
+        backstage.io/kubernetes-id: ${{ values.backstageId }}
+    spec:
+      containers:
+      - name: ${{ values.name }}
+        image: ${{ values.image }}
+        ports:
+        - containerPort: ${{ values.containerPort }}
+        resources:
+          requests:
+            cpu: ${{ values.cpuRequest }}
+            memory: ${{ values.memoryRequest }}
+          limits:
+            cpu: ${{ values.cpuLimit }}
+            memory: ${{ values.memoryLimit }}
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /
+            port: ${{ values.containerPort }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: ${{ values.containerPort }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      # Restart policy
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${{ values.name }}-service
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.name }}
+    environment: ${{ values.environment }}
+    backstage.io/kubernetes-id: ${{ values.backstageId }}
+spec:
+  selector:
+    app: ${{ values.name }}
+  ports:
+  - name: http
+    port: 80
+    targetPort: ${{ values.containerPort }}
+    protocol: TCP
+  type: ClusterIP

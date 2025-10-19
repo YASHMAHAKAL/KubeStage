@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${{ values.name }}
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.name }}
+    target-app: ${{ values.targetApp }}
+    backstage.io/kubernetes-id: ${{ values.backstageId }}
+  annotations:
+    backstage.io/created-by: template
+    backstage.io/template: kubernetes-service-template
+    backstage.io/service-type: ${{ values.serviceType }}
+spec:
+  type: ${{ values.serviceType }}
+  selector:
+    app: ${{ values.targetApp }}
+  ports:
+  - name: http
+    port: ${{ values.port }}
+    targetPort: ${{ values.targetPort }}
+    protocol: ${{ values.protocol }}
+    {%- if values.serviceType == 'NodePort' and values.nodePort %}
+    nodePort: ${{ values.nodePort }}
+    {%- endif %}
+  {%- if values.sessionAffinity != 'None' %}
+  sessionAffinity: ${{ values.sessionAffinity }}
+  {%- endif %}
+  {%- if values.serviceType == 'LoadBalancer' %}
+  # LoadBalancer specific configuration
+  # Uncomment and modify as needed for your cloud provider
+  # loadBalancerIP: "192.168.1.100"  # Static IP (if supported)
+  # loadBalancerSourceRanges:         # Source IP ranges (if supported)
+  # - "10.0.0.0/8"
+  {%- endif %}
+  {%- if values.serviceType == 'ExternalName' %}
+  # ExternalName specific configuration
+  # externalName: external-service.example.com
+  {%- endif %}

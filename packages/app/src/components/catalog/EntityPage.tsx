@@ -57,6 +57,7 @@ import {
   EntityKubernetesContent,
   isKubernetesAvailable,
 } from '@backstage/plugin-kubernetes';
+import { KubernetesActionButtons } from '../KubernetesActions';
 
 const techdocsContent = (
   <EntityTechdocsContent>
@@ -158,6 +159,7 @@ const serviceEntityPage = (
       title="Kubernetes"
       if={isKubernetesAvailable}
     >
+      <KubernetesActionButtons />
       <EntityKubernetesContent />
     </EntityLayout.Route>
 
@@ -204,6 +206,7 @@ const websiteEntityPage = (
       title="Kubernetes"
       if={isKubernetesAvailable}
     >
+      <KubernetesActionButtons />
       <EntityKubernetesContent />
     </EntityLayout.Route>
 

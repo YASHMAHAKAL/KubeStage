@@ -59,6 +59,10 @@ backend.add(import('@backstage/plugin-search-backend-module-techdocs'));
 // kubernetes plugin
 backend.add(import('@backstage/plugin-kubernetes-backend'));
 
+// custom kubernetes actions
+import { kubernetesActionsPlugin } from './plugins/kubernetes-actions';
+backend.add(kubernetesActionsPlugin);
+
 // notifications and signals plugins
 backend.add(import('@backstage/plugin-notifications-backend'));
 backend.add(import('@backstage/plugin-signals-backend'));
