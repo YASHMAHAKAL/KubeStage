@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${{ values.name }}
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.name }}
+    backstage.io/kubernetes-id: ${{ values.backstageId }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.backstageId }}
+spec:
+  containers:
+  - name: ${{ values.name }}-container
+    image: ${{ values.image }}
+    ports:
+    - containerPort: 80
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"

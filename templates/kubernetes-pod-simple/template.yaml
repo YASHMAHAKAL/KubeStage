@@ -1,0 +1,75 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: kubernetes-pod-simple
+  title: Simple Kubernetes Pod Template
+  description: Create a Kubernetes pod without GitHub publishing (for testing)
+  tags:
+    - kubernetes
+    - pod
+    - test
+spec:
+  owner: user:guest
+  type: service
+
+  parameters:
+    - title: Pod Configuration
+      required:
+        - name
+        - namespace
+        - image
+      properties:
+        name:
+          title: Pod Name
+          type: string
+          description: Name of the pod
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          ui:autofocus: true
+        namespace:
+          title: Kubernetes Namespace
+          type: string
+          description: Target namespace for the pod
+          default: default
+        image:
+          title: Container Image
+          type: string
+          description: Docker image to run
+          default: nginx:latest
+        backstageId:
+          title: Backstage Kubernetes ID
+          type: string
+          description: ID for Backstage to track this pod
+          default: cluster-viewer
+
+  steps:
+    # Fetch the template content
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          name: ${{ parameters.name }}
+          namespace: ${{ parameters.namespace }}
+          image: ${{ parameters.image }}
+          backstageId: ${{ parameters.backstageId }}
+
+    # Apply Kubernetes resources directly (no GitHub publishing)
+    - id: apply-k8s
+      name: Apply Kubernetes Pod
+      action: kubernetes:apply
+      input:
+        manifestPath: pod.yaml
+        clusterName: minikube
+
+  output:
+    text:
+      - title: Success
+        content: |
+          Pod '${{ parameters.name }}' has been created successfully in namespace '${{ parameters.namespace }}'
+          
+          You can check the pod status with:
+          ```bash
+          kubectl get pods -n ${{ parameters.namespace }}
+          kubectl describe pod ${{ parameters.name }} -n ${{ parameters.namespace }}
+          ```

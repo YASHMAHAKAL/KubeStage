@@ -7,11 +7,11 @@
     "role": "frontend"
   },
   "scripts": {
-    "start": "backstage-cli package start",
-    "build": "backstage-cli package build",
-    "clean": "backstage-cli package clean",
-    "test": "backstage-cli package test",
-    "lint": "backstage-cli package lint"
+    "start": "NODE_OPTIONS=--no-node-snapshot backstage-cli package start",
+    "build": "NODE_OPTIONS=--no-node-snapshot backstage-cli package build",
+    "clean": "NODE_OPTIONS=--no-node-snapshot backstage-cli package clean",
+    "test": "NODE_OPTIONS=--no-node-snapshot backstage-cli package test",
+    "lint": "NODE_OPTIONS=--no-node-snapshot backstage-cli package lint"
   },
   "dependencies": {
     "@backstage/app-defaults": "^1.7.1",

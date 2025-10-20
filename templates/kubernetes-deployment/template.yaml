@@ -172,6 +172,8 @@ spec:
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
         gitCommitMessage: 'Initial commit: Add ${{ parameters.name }} deployment'
+        gitAuthorName: 'Backstage Scaffolder'
+        gitAuthorEmail: 'scaffolder@backstage.io'
 
     # Register in catalog
     - id: register

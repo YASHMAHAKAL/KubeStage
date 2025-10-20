@@ -38,6 +38,8 @@ integrations:
       # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
       # about setting up the GitHub integration here: https://backstage.io/docs/integrations/github/locations#configuration
       token: ${GITHUB_TOKEN}
+      # Organization support
+      organization: YASHMAHAKAL
     ### Example for how to add your GitHub Enterprise instance using the API:
     # - host: ghe.example.net
     #   apiBaseUrl: https://ghe.example.net/api/v3
@@ -67,6 +69,10 @@ auth:
   providers:
     # See https://backstage.io/docs/auth/guest/provider
     guest: {}
+    # github:
+    #   development:
+    #     clientId: ${GITHUB_CLIENT_ID}
+    #     clientSecret: ${GITHUB_CLIENT_SECRET}
 
 scaffolder:
   # see https://backstage.io/docs/features/software-templates/configuration for software template options
@@ -95,6 +101,14 @@ catalog:
         - allow: [Template]
     - type: file
       target: /home/yash/kubestage/templates/kubernetes-service/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /home/yash/kubestage/templates/kubernetes-pod/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: /home/yash/kubestage/templates/kubernetes-pod-simple/template.yaml
       rules:
         - allow: [Template]
 
@@ -126,7 +140,6 @@ kubernetes:
           serviceAccountToken: ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}
           caFile: '/home/yash/kubestage/.backstage/minikube-ca.crt'
           skipMetricsLookup: true
-
 # see https://backstage.io/docs/permissions/getting-started for more on the permission framework
 permission:
   # setting this to `false` will disable permissions
