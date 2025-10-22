@@ -75,12 +75,21 @@ export async function createKubernetesActionRouter(
               `--namespace=${namespace}`
             ];
             const labelResult = await executeKubectl(labelArgs);
-            logger.info(`Labels added: ${labelResult.stdout}`);
+            logger.info(`Labels added to deployment: ${labelResult.stdout}`);
+            
+            // Add Backstage labels to the pod template so pods inherit the label
+            const patchArgs = [
+              'patch', 'deployment', name,
+              '-p', '{"spec":{"template":{"metadata":{"labels":{"backstage.io/kubernetes-id":"cluster-viewer"}}}}}',
+              `--namespace=${namespace}`
+            ];
+            const patchResult = await executeKubectl(patchArgs);
+            logger.info(`Pod template patched: ${patchResult.stdout}`);
             
             res.json({
               success: true,
-              message: `Deployment ${name} created and labeled successfully`,
-              output: stdout + '\n' + labelResult.stdout,
+              message: `Deployment ${name} created and labeled successfully (including pod template)`,
+              output: stdout + '\n' + labelResult.stdout + '\n' + patchResult.stdout,
               action: action,
               parameters: parameters
             });
@@ -151,6 +160,8 @@ export async function createKubernetesActionRouter(
             `--namespace=${podNamespace}`,
             '--labels=backstage.io/kubernetes-id=cluster-viewer'
           ];
+
+          
           break;
 
         case 'delete-resource':

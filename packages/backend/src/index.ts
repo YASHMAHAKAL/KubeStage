@@ -20,9 +20,7 @@ backend.add(
   import('@backstage/plugin-scaffolder-backend-module-notifications'),
 );
 
-// custom kubernetes scaffolder actions
-import { kubernetesScaffolderActionsModule } from './plugins/kubernetes-scaffolder-actions';
-backend.add(kubernetesScaffolderActionsModule);
+// kubernetes scaffolder actions removed - using standard actions only
 
 // techdocs plugin
 backend.add(import('@backstage/plugin-techdocs-backend'));
