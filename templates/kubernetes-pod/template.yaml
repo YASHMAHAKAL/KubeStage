@@ -72,6 +72,32 @@ spec:
                 - 'development'
                 - 'staging'
                 - 'production'
+    
+    - title: Repository Configuration
+      required:
+        - repoUrl
+        - targetPath
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+          description: Select existing repository or create new one
+        targetPath:
+          title: Target Path in Repository
+          type: string
+          description: Path where files will be created (e.g., pods/my-pod)
+          default: pods/${{ parameters.name }}
+          ui:help: Files will be created in this directory within the repository
+        createPullRequest:
+          title: Create Pull Request
+          type: boolean
+          description: Create a pull request instead of pushing directly to main branch
+          default: true
+          ui:help: Recommended for existing repositories to review changes
   steps:
     - id: fetch-base
       name: Fetch Base
@@ -85,25 +111,102 @@ spec:
           namespace: ${{ parameters.namespace }}
           labels: ${{ parameters.labels }}
 
+    # Publish to GitHub (conditional based on PR setting)
     - id: publish
-      name: Publish
+      name: Publish to GitHub
+      if: ${{ not parameters.createPullRequest }}
       action: publish:github
       input:
-        allowedHosts: ['github.com']
-        description: This is ${{ parameters.name }}
+        description: Kubernetes pod for ${{ parameters.name }}
         repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: main
+        targetPath: ${{ parameters.targetPath }}
+        gitCommitMessage: 'Add ${{ parameters.name }} pod to ${{ parameters.targetPath }}'
+        gitAuthorName: 'Backstage Scaffolder'
+        gitAuthorEmail: 'scaffolder@backstage.io'
 
+    # Create Pull Request for existing repositories
+    - id: publish-pr
+      name: Create Pull Request
+      if: ${{ parameters.createPullRequest }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        targetPath: ${{ parameters.targetPath }}
+        title: 'Add ${{ parameters.name }} Kubernetes pod'
+        description: |
+          ## 🚀 New Kubernetes Pod: ${{ parameters.name }}
+          
+          This PR adds a new Kubernetes pod configuration for **${{ parameters.name }}**.
+          
+          ### 📋 Pod Details:
+          - **Name:** ${{ parameters.name }}
+          - **Image:** ${{ parameters.image }}
+          - **Port:** ${{ parameters.port }}
+          - **Namespace:** ${{ parameters.namespace }}
+          
+          ### 📁 Files Added:
+          - `${{ parameters.targetPath }}/catalog-info.yaml` - Backstage catalog configuration
+          - `${{ parameters.targetPath }}/k8s/pod.yaml` - Kubernetes pod manifest
+          
+          ### 🚀 To Deploy:
+          ```bash
+          kubectl apply -f ${{ parameters.targetPath }}/k8s/pod.yaml
+          ```
+        branchName: feature/add-${{ parameters.name }}-pod
+        gitCommitMessage: 'Add ${{ parameters.name }} pod'
+        gitAuthorName: 'Backstage Scaffolder'
+        gitAuthorEmail: 'scaffolder@backstage.io'
+
+    # Register in catalog (for direct push)
     - id: register
-      name: Register
+      name: Register in Catalog
+      if: ${{ not parameters.createPullRequest }}
       action: catalog:register
       input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/${{ parameters.targetPath }}/catalog-info.yaml'
 
   output:
     links:
       - title: Repository
-        url: ${{ steps.publish.output.remoteUrl }}
-      - title: Open in catalog
+        url: ${{ (parameters.createPullRequest and steps['publish-pr'].output.remoteUrl) or steps['publish'].output.remoteUrl }}
+        icon: github
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.pullRequestUrl }}
+        icon: pullRequest
+        if: ${{ parameters.createPullRequest }}
+      - title: Open in Catalog
         icon: catalog
-        entityRef: ${{ steps.register.output.entityRef }}
+        entityRef: ${{ steps['register'].output.entityRef }}
+        if: ${{ not parameters.createPullRequest }}
+      - title: View Pod Manifest
+        icon: dashboard
+        url: ${{ (parameters.createPullRequest and steps['publish-pr'].output.remoteUrl) or steps['publish'].output.remoteUrl }}/blob/main/${{ parameters.targetPath }}/k8s/pod.yaml
+    text:
+      - title: Pod Published Successfully
+        content: |
+          🎉 **Pod configuration published!**
+          
+          Your Kubernetes pod **${{ parameters.name }}** has been ${{ parameters.createPullRequest and "submitted as a pull request" or "pushed to the repository" }}.
+          
+          📁 **Files created in:** `${{ parameters.targetPath }}/`
+          - `catalog-info.yaml` - Backstage catalog configuration
+          - `k8s/pod.yaml` - Kubernetes pod manifest
+          
+          � **Next Steps:**
+          ${{ parameters.createPullRequest and "1. **Review and merge** the pull request above" or "1. **Files are ready** in the repository" }}
+          2. **Deploy manually** using the kubectl commands below
+          
+          🚀 **To deploy:**
+          ```bash
+          # Navigate to the pod directory
+          cd ${{ parameters.targetPath }}
+          
+          # Apply the pod
+          kubectl apply -f k8s/pod.yaml
+          
+          # Check status
+          kubectl get pods -n ${{ parameters.namespace }}
+          kubectl describe pod ${{ parameters.name }} -n ${{ parameters.namespace }}
+          ```
