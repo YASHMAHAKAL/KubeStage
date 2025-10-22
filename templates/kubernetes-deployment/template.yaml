@@ -130,9 +130,10 @@ spec:
           description: ID for Backstage to track this deployment
           default: cluster-viewer
 
-    - title: Repository Location
+    - title: Repository Configuration
       required:
         - repoUrl
+        - targetPath
       properties:
         repoUrl:
           title: Repository Location
@@ -141,6 +142,19 @@ spec:
           ui:options:
             allowedHosts:
               - github.com
+          description: Select existing repository or create new one
+        targetPath:
+          title: Target Path in Repository
+          type: string
+          description: Path where files will be created (e.g., deployments/my-app)
+          default: deployments/${{ parameters.name }}
+          ui:help: Files will be created in this directory within the repository
+        createPullRequest:
+          title: Create Pull Request
+          type: boolean
+          description: Create a pull request instead of pushing directly to main branch
+          default: true
+          ui:help: Recommended for existing repositories to review changes
 
   steps:
     # Fetch the template content
@@ -163,39 +177,105 @@ spec:
           version: ${{ parameters.version }}
           backstageId: ${{ parameters.backstageId }}
 
-    # Publish to GitHub
+    # Publish to GitHub (conditional based on PR setting)
     - id: publish
       name: Publish to GitHub
+      if: ${{ not parameters.createPullRequest }}
       action: publish:github
       input:
         description: Kubernetes deployment for ${{ parameters.name }}
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
-        gitCommitMessage: 'Initial commit: Add ${{ parameters.name }} deployment'
+        targetPath: ${{ parameters.targetPath }}
+        gitCommitMessage: 'Add ${{ parameters.name }} deployment to ${{ parameters.targetPath }}'
+        gitAuthorName: 'Backstage Scaffolder'
+        gitAuthorEmail: 'scaffolder@backstage.io'
 
-    # Register in catalog
+    # Create Pull Request for existing repositories
+    - id: publish-pr
+      name: Create Pull Request
+      if: ${{ parameters.createPullRequest }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        targetPath: ${{ parameters.targetPath }}
+        title: 'Add ${{ parameters.name }} Kubernetes deployment'
+        description: |
+          ## 🚀 New Kubernetes Deployment: ${{ parameters.name }}
+          
+          This PR adds a new Kubernetes deployment configuration for **${{ parameters.name }}**.
+          
+          ### 📋 Deployment Details:
+          - **Name:** ${{ parameters.name }}
+          - **Namespace:** ${{ parameters.namespace }}
+          - **Image:** ${{ parameters.image }}
+          - **Replicas:** ${{ parameters.replicas }}
+          - **Environment:** ${{ parameters.environment }}
+          
+          ### 📁 Files Added:
+          - `${{ parameters.targetPath }}/catalog-info.yaml` - Backstage catalog configuration
+          - `${{ parameters.targetPath }}/k8s/deployment.yaml` - Kubernetes deployment manifest
+          - `${{ parameters.targetPath }}/README.md` - Project documentation
+          
+          ### 🚀 To Deploy:
+          ```bash
+          kubectl apply -f ${{ parameters.targetPath }}/k8s/deployment.yaml
+          ```
+        branchName: feature/add-${{ parameters.name }}-deployment
+        gitCommitMessage: 'Add ${{ parameters.name }} deployment'
+        gitAuthorName: 'Backstage Scaffolder'
+        gitAuthorEmail: 'scaffolder@backstage.io'
+
+    # Register in catalog (for direct push)
     - id: register
       name: Register in Catalog
+      if: ${{ not parameters.createPullRequest }}
       action: catalog:register
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml'
-
-    # Apply Kubernetes resources (if cluster access is available)
-    - id: apply-k8s
-      name: Apply Kubernetes Resources
-      action: kubernetes:apply
-      input:
-        manifestPath: k8s/deployment.yaml
-        clusterName: minikube
+        catalogInfoPath: '/${{ parameters.targetPath }}/catalog-info.yaml'
 
   output:
     links:
       - title: Repository
-        url: ${{ steps['publish'].output.remoteUrl }}
+        url: ${{ (parameters.createPullRequest and steps['publish-pr'].output.remoteUrl) or steps['publish'].output.remoteUrl }}
+        icon: github
+      - title: Pull Request
+        url: ${{ steps['publish-pr'].output.pullRequestUrl }}
+        icon: pullRequest
+        if: ${{ parameters.createPullRequest }}
       - title: Open in Catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}
+        if: ${{ not parameters.createPullRequest }}
       - title: View Deployment
         icon: dashboard
-        url: ${{ steps['publish'].output.remoteUrl }}/blob/main/k8s/deployment.yaml
+        url: ${{ (parameters.createPullRequest and steps['publish-pr'].output.remoteUrl) or steps['publish'].output.remoteUrl }}/blob/main/${{ parameters.targetPath }}/k8s/deployment.yaml
+    text:
+      - title: Deployment Published Successfully
+        content: |
+          🎉 **Deployment configuration published!**
+          
+          Your Kubernetes deployment **${{ parameters.name }}** has been ${{ parameters.createPullRequest and "submitted as a pull request" or "pushed to the repository" }}.
+          
+          📁 **Files created in:** `${{ parameters.targetPath }}/`
+          - `catalog-info.yaml` - Backstage catalog configuration
+          - `k8s/deployment.yaml` - Kubernetes deployment manifest  
+          - `README.md` - Project documentation
+          
+          � **Next Steps:**
+          ${{ parameters.createPullRequest and "1. **Review and merge** the pull request above" or "1. **Files are ready** in the repository" }}
+          2. **Deploy manually** using the kubectl commands below
+          
+          🚀 **To deploy:**
+          ```bash
+          # Navigate to the deployment directory
+          cd ${{ parameters.targetPath }}
+          
+          # Apply the deployment
+          kubectl apply -f k8s/deployment.yaml
+          
+          # Check status  
+          kubectl get deployments -n ${{ parameters.namespace }} -l app=${{ parameters.name }}
+          kubectl get pods -n ${{ parameters.namespace }} -l app=${{ parameters.name }}
+          ```
