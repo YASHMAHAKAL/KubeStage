@@ -171,9 +171,42 @@ spec:
         description: Kubernetes deployment for ${{ parameters.name }}
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: main
-        gitCommitMessage: 'Initial commit: Add ${{ parameters.name }} deployment'
+        targetPath: ${{ parameters.targetPath }}
+        gitCommitMessage: 'Add ${{ parameters.name }} deployment to ${{ parameters.targetPath }}'
         gitAuthorName: 'Backstage Scaffolder'
         gitAuthorEmail: 'scaffolder@backstage.io'
+
+    # Create Pull Request for existing repositories
+    - id: publish-pr
+      name: Create Pull Request
+      if: ${{ parameters.createPullRequest }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        targetPath: ${{ parameters.targetPath }}
+        title: 'Add ${{ parameters.name }} Kubernetes deployment'
+        description: |
+          ## 🚀 New Kubernetes Deployment: ${{ parameters.name }}
+          
+          This PR adds a new Kubernetes deployment configuration for **${{ parameters.name }}**.
+          
+          ### 📋 Deployment Details:
+          - **Name:** ${{ parameters.name }}
+          - **Namespace:** ${{ parameters.namespace }}
+          - **Image:** ${{ parameters.image }}
+          - **Replicas:** ${{ parameters.replicas }}
+          - **Environment:** ${{ parameters.environment }}
+          
+          ### 📁 Files Added:
+          - `${{ parameters.targetPath }}/catalog-info.yaml` - Backstage catalog configuration
+          - `${{ parameters.targetPath }}/k8s/deployment.yaml` - Kubernetes deployment manifest
+          - `${{ parameters.targetPath }}/README.md` - Project documentation
+          
+          ### 🚀 To Deploy:
+          ```bash
+          kubectl apply -f ${{ parameters.targetPath }}/k8s/deployment.yaml
+          ```
+        branchName: feature/add-${{ parameters.name }}-deployment
 
     # Register in catalog
     - id: register
