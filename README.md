@@ -133,7 +133,7 @@ spec:
        - type: 'config'
          clusters:
            - name: 'minikube'
-             url: 'https://192.168.49.2:8443'
+             url: 'https://YOUR_CLUSTER_IP:8443'
              authProvider: 'serviceAccount'
              serviceAccountToken: ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}
              caFile: '/path/to/ca.crt'
@@ -257,7 +257,7 @@ kubernetes:
     - type: 'config'
       clusters:
         - name: 'minikube'
-          url: 'https://192.168.49.2:8443'
+          url: 'https://YOUR_CLUSTER_IP:8443'
           authProvider: 'serviceAccount'
           serviceAccountToken: ${KUBERNETES_SERVICE_ACCOUNT_TOKEN}
           caFile: '/path/to/ca.crt'
